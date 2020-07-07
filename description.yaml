@@ -1,0 +1,10 @@
+Type: Jupyter Notebook Extension
+Compatibility: 3.x, 4.x, 5.x, 6.x, 7.x
+Name: Figure layout
+Main: main.js
+Link: README.md
+Description: |
+  Graphically declare where axes should go on a figure
+
+Parameters:
+- none
