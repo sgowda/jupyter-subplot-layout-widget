@@ -85,6 +85,7 @@ define([
   var state = "none";
   var clicked_subplot = -1;
   var clicked_corner = [-1, -1];
+  var clicked_edge = "none";
 
   var current_letter = 'A';
 
@@ -110,26 +111,40 @@ define([
       if (start_x > x_bounds[0] && start_x < x_bounds[1] && start_y > y_bounds[0] && start_y < y_bounds[1]) {
         clicked_subplot = i;
 
+        // determine if a corner was clicked
         if (Math.abs(start_x - x_bounds[0]) < margin && Math.abs(start_y - y_bounds[0]) < margin) {
           clicked_corner = [0, 0];
-          console.log("corner");
         } else if (Math.abs(start_x - x_bounds[1]) < margin && Math.abs(start_y - y_bounds[0]) < margin) {
           clicked_corner = [1, 0];
-          console.log("corner");
         } else if (Math.abs(start_x - x_bounds[0]) < margin && Math.abs(start_y - y_bounds[1]) < margin) {
           clicked_corner = [0, 1];
-          console.log("corner");
         } else if (Math.abs(start_x - x_bounds[1]) < margin && Math.abs(start_y - y_bounds[1]) < margin) {
           clicked_corner = [1, 1];
-          console.log("corner");
         } else {
           clicked_corner = [-1, -1];
         }
-        break;
+
+        // determine if an edge was clicked
+        if (clicked_corner[0] == -1) {  // can't click a corner and edge at the same time
+          if (Math.abs(start_x - x_bounds[0]) < margin && start_y > y_bounds[0] && start_y < y_bounds[1]) {
+            clicked_edge = "x0";
+          } else if (Math.abs(start_x - x_bounds[1]) < margin && start_y > y_bounds[0] && start_y < y_bounds[1]) {
+            clicked_edge = "x1";
+          } else if (Math.abs(start_y - y_bounds[0]) < margin && start_x > x_bounds[0] && start_x < x_bounds[1]) {
+            clicked_edge = "y0";
+          } else if (Math.abs(start_y - y_bounds[1]) < margin && start_x > x_bounds[0] && start_x < x_bounds[1]) {
+            clicked_edge = "y1";
+          } 
+        }
+
+        break; // TODO do overlapping subplots make sense? like inset plots?
       }
     }
+
+    let corner_was_clicked = clicked_corner[0] != -1 && clicked_corner[1] != -1;
+    let edge_was_clicked = clicked_edge != "none";
     if (clicked_subplot >= 0) {
-      if (clicked_corner[0] != -1 && clicked_corner[1] != -1) {
+      if (corner_was_clicked || edge_was_clicked) {
         state = "resize";
       } else {
         state = "move";
@@ -140,7 +155,6 @@ define([
   }
 
   function mouseup_callback(event) {
-    console.log("mouseup");
     let elem = document.getElementById('canv2');
     let rect = elem.getBoundingClientRect();
 
@@ -185,7 +199,6 @@ define([
         // increment letter for next plot
         current_letter = String.fromCharCode(current_letter.charCodeAt(0) + 1);
       }
-
     } else if (state == "move") {
       displ_x = end_x - start_x;
       displ_y = end_y - start_y;
@@ -200,39 +213,64 @@ define([
         subplot.top += displ_y;
         subplot.left += displ_x;
       }
-
     } else if (state == "resize") {
-      console.log("resize")
       var subplot = window.subplots[clicked_subplot];
       let x_bounds = [subplot.left, subplot.left + subplot.width];
       let y_bounds = [subplot.top, subplot.top + subplot.height];
 
-      corner_displ_x = x_bounds[clicked_corner[0]] - end_x;
-      corner_displ_y = y_bounds[clicked_corner[1]] - end_y;
+      let corner_was_clicked = clicked_corner[0] != -1 && clicked_corner[1] != -1;
+      let edge_was_clicked = clicked_edge != "none";
 
-      if (clicked_corner[0] == 0 && clicked_corner[1] == 0) {
-        // top left corner
-        subplot.width += corner_displ_x;
-        subplot.height += corner_displ_y;
+      if (corner_was_clicked) {
+        let corner_displ_x = x_bounds[clicked_corner[0]] - end_x;
+        let corner_displ_y = y_bounds[clicked_corner[1]] - end_y;
 
-        subplot.left = end_x;
-        subplot.top = end_y;
-      } else if (clicked_corner[0] == 1 && clicked_corner[1] == 0) {
-        // top right corner
-        subplot.width -= corner_displ_x;
-        subplot.height += corner_displ_y;
+        if (clicked_corner[0] == 0 && clicked_corner[1] == 0) {
+          // top left corner
+          subplot.width += corner_displ_x;
+          subplot.height += corner_displ_y;
 
-        subplot.top = end_y;
-      } else if (clicked_corner[0] == 0 && clicked_corner[1] == 1) {
-        // bottom left corner
-        subplot.width += corner_displ_x;
-        subplot.height -= corner_displ_y;
+          subplot.left = end_x;
+          subplot.top = end_y;
+        } else if (clicked_corner[0] == 1 && clicked_corner[1] == 0) {
+          // top right corner
+          subplot.width -= corner_displ_x;
+          subplot.height += corner_displ_y;
 
-        subplot.left = end_x;
-      } else if (clicked_corner[0] == 1 && clicked_corner[1] == 1) {
-        // bottom right corner
-        subplot.width -= corner_displ_x;
-        subplot.height -= corner_displ_y;
+          subplot.top = end_y;
+        } else if (clicked_corner[0] == 0 && clicked_corner[1] == 1) {
+          // bottom left corner
+          subplot.width += corner_displ_x;
+          subplot.height -= corner_displ_y;
+
+          subplot.left = end_x;
+        } else if (clicked_corner[0] == 1 && clicked_corner[1] == 1) {
+          // bottom right corner
+          subplot.width -= corner_displ_x;
+          subplot.height -= corner_displ_y;
+        }
+      } else if (edge_was_clicked) {
+        if (clicked_edge == "x0") {
+          // left edge
+          let x_displ = x_bounds[0] - end_x;
+          subplot.left = end_x;
+          subplot.width += x_displ;
+        } else if (clicked_edge == "x1") {
+          // right edge
+          let x_displ = end_x - x_bounds[1];
+          subplot.width += x_displ;          
+        } else if (clicked_edge == "y0") {
+          console.log("top edge")
+          // top(?) edge
+          let y_displ = y_bounds[0] - end_y;
+          subplot.top = end_y;
+          subplot.height += y_displ;
+        } else if (clicked_edge == "y1") {
+          console.log("bottom edge");
+          // bottom(?) edge
+          let y_displ = y_bounds[1] - end_y;
+          subplot.height -= y_displ;
+        }
       }
     }
 
