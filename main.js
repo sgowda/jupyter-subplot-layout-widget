@@ -82,6 +82,9 @@ define([
   var end_y = -1;
   window.subplots = []
 
+  var unselected_color = "#A0A0A0";
+  var selected_color = "#FF0000";
+
   var state = "none";
   var clicked_subplot = -1;
   var clicked_corner = [-1, -1];
@@ -167,33 +170,29 @@ define([
 
 
     if (state == "new") {
-      // create object to represent subplot
-      var py_height = Math.abs(start_y - end_y) / canvas_height;
-
       let width = Math.abs(start_x - end_x);
       let height = Math.abs(start_y - end_y);
 
       if (width < 15 && height < 15) {
-        // clear selection
+        // clear selection,i.e. you can't make a tiny subplot
         for (let i = 0; i < window.subplots.length; i += 1) {
           let subplot = window.subplots[i];
-          subplot.color = '#A0A0A0';
+          subplot.color = unselected_color;
           subplot.selected = false;
         }
       } else {
-        var subplot = {
-          color: '#A0A0A0',
-          width: width,
-          height: height,
-          top: Math.min(start_y, end_y),
-          left: Math.min(start_x, end_x),
-          letter: current_letter,
-          py_width: Math.abs(start_x - end_x) / canvas_width,
-          py_height: py_height,
-          py_x0: Math.min(start_x, end_x) / canvas_width,
-          py_y0: 1 - (Math.min(start_y, end_y) / canvas_height) - py_height,
-          selected: false
-        };
+        let subplot = create_new_subplot(Math.min(start_x, end_x), Math.min(start_y, end_y),
+          width, height);
+
+        // var subplot = {
+        //   color: unselected_color,
+        //   width: width,
+        //   height: height,
+        //   top: Math.min(start_y, end_y),    // top-left corner is the origin, annoyingly
+        //   left: Math.min(start_x, end_x),
+        //   letter: current_letter,
+        //   selected: false
+        // };
         window.subplots.push(subplot);
 
         // increment letter for next plot
@@ -206,7 +205,7 @@ define([
       var subplot = window.subplots[clicked_subplot];
       if (displ_x < 5 && displ_y < 5) {
         // treat this as a "select" action
-        subplot.color = "#FF0000";
+        subplot.color = selected_color;
         subplot.selected = !subplot.selected; // toggle selection
       } else {
         // move action
@@ -277,7 +276,6 @@ define([
     clicked_subplot = -1;
     clicked_corner = [-1, -1];
     state = "none"
-    console.log("added to subplots");
 
     draw();
   }
@@ -288,32 +286,45 @@ define([
 
     let context = elem.getContext('2d');    
     context.clearRect(0, 0, elem.width, elem.height);
+    context.beginPath();
 
     for (let index = 0; index < window.subplots.length; index++) {
       var subplot = window.subplots[index];
 
       // draw object
-      context.fillStyle = subplot.color;
-      context.fillRect(subplot.left, subplot.top, subplot.width, subplot.height);
+      context.rect(subplot.left, subplot.top, subplot.width, subplot.height);
+      context.strokeStyle = subplot.color;
+      context.stroke();
+
+      // context.fillStyle = subplot.color;
+      // context.fillRect(subplot.left, subplot.top, subplot.width, subplot.height);
+      context.textAlign = "left";
       context.font = "16px Arial";
-      let subplot_letter = subplot.letter; // String.fromCharCode('A'.charCodeAt(0) + index);
-      context.fillText(subplot_letter, subplot.left, subplot.top);
+      context.fillText(subplot.letter, subplot.left, subplot.top);
+
+      context.textAlign = "center";
+      context.font = "10px Arial";
+      context.fillText(subplot.annotation, subplot.left + subplot.width/2, subplot.top + subplot.height/2);
     }
   }
 
   function generate_code() {
-    str = "import matplotlib.pyplot as plt\n%matplotlib notebook";
+    str = "import matplotlib.pyplot as plt\n%matplotlib notebook\n";
     str += "fig = plt.figure()\n";
     for (i = 0; i < window.subplots.length; i += 1) {
       subplot = window.subplots[i];
-      let subplot_letter = String.fromCharCode('A'.charCodeAt(0) + i);
-      str += `ax${subplot.letter} = fig.add_axes([${subplot.py_x0.toFixed(2)}, ${subplot.py_y0.toFixed(2)}, ${subplot.py_width.toFixed(2)}, ${subplot.py_height.toFixed(2)}])\n`;
-      str += `fig.text(${subplot.py_x0.toFixed(2)}, ${(subplot.py_y0 + subplot.py_height).toFixed(2)}, "${subplot_letter}", fontsize=24, va='bottom', ha='right')\n`
+
+      let py_width = subplot.width / canvas_width;
+      let py_height = subplot.height / canvas_height;
+      let py_x0 = subplot.left / canvas_width;
+      let py_y0 = 1 - (subplot.top / canvas_height) - py_height;
+
+      str += `ax${subplot.letter} = fig.add_axes([${py_x0.toFixed(2)}, ${py_y0.toFixed(2)}, ${py_width.toFixed(2)}, ${py_height.toFixed(2)}])\n`;
+      str += `fig.text(${py_x0.toFixed(2)}, ${(py_y0 + py_height).toFixed(2)}, "${subplot.letter}", fontsize=24, va='bottom', ha='right')\n`
     }
 
+    // inject new cell into the notebook
     Jupyter.notebook.insert_cell_below('code').set_text(str);
-
-    // document.getElementById("code").innerHTML = str;
   }
 
   function clear() {
@@ -324,6 +335,29 @@ define([
   function save() {
     var curr_cell = Jupyter.notebook.get_selected_cell();
     curr_cell.set_text("# Select your plot below\n# subplots_data:\n# " + JSON.stringify(window.subplots));
+  }
+
+  function input_field_focus() {
+    // disable Jupyter notebook keyboard shortcuts which prevent typing into the field
+    Jupyter.keyboard_manager.disable();
+  }
+
+  function input_field_blur() {
+    // re-enable keyboard shortcuts
+    Jupyter.keyboard_manager.enable();
+  }
+
+  function create_new_subplot(left, top, width, height) {
+    return {
+      color: unselected_color,
+      width: width,
+      height: height,
+      top: top,
+      left: left,
+      letter: current_letter,
+      selected: false,
+      annotation: "a subplot"
+    };
   }
 
   function split_subplot() {
@@ -342,15 +376,8 @@ define([
 
         for (let kx = 0; kx < horiz_splits; kx += 1) {
           for (let ky = 0; ky < vertical_splits; ky += 1) {
-            let new_subplot = {
-              color: '#A0A0A0',
-              width: new_width * 0.9,
-              height: new_height * 0.9,
-              top: y_bounds[0] + new_height*ky,
-              left: x_bounds[0] + new_width*kx,
-              letter: current_letter,
-              selected: false
-            };
+            let new_subplot = create_new_subplot(x_bounds[0] + new_width*kx, y_bounds[0] + new_height*ky,
+              new_width * 0.9, new_height * 0.9);
             window.subplots.push(new_subplot);            
             current_letter = String.fromCharCode(current_letter.charCodeAt(0) + 1);
           }
@@ -414,9 +441,9 @@ define([
     var x = document.createElement("canvas");
     x.setAttribute("id", "canv2");
     x.setAttribute("style", "border:1px solid #000000;"); //  margin-left:150px
-    x.setAttribute("width", 640);
-    x.setAttribute("clientWidth", 640);
-    x.setAttribute("height", 480);
+    x.setAttribute("width", canvas_width);
+    x.setAttribute("clientWidth", canvas_width);
+    x.setAttribute("height", canvas_height);
 
     var generate_button = document.createElement("BUTTON");
     generate_button.innerHTML = "Generate python cell"
@@ -465,11 +492,17 @@ define([
 
     var elem = document.getElementById('canv2');
     console.log(elem)
-    elem.width = 640;
-    elem.height = 480;
+    elem.width = canvas_width;
+    elem.height = canvas_height;
 
     elem.addEventListener('mousedown', mousedown_callback, false);
     elem.addEventListener('mouseup', mouseup_callback, false);
+
+    // input field handlers
+    $("#subplots_update").focus(input_field_focus).blur(input_field_blur);
+    $("#vertical_splits").focus(input_field_focus).blur(input_field_blur);
+    $("#horiz_splits").focus(input_field_focus).blur(input_field_blur);
+
 
     draw();
   };
