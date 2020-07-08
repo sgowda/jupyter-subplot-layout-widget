@@ -322,11 +322,51 @@ define([
   }
 
   function save() {
-
+    var curr_cell = Jupyter.notebook.get_selected_cell();
+    curr_cell.set_text("# Select your plot below\n# subplots_data:\n# " + JSON.stringify(window.subplots));
   }
 
-  function load() {
+  function split_subplot() {
+    let horiz_splits = $("#horiz_splits").val();
+    let vertical_splits = $("#vertical_splits").val();
+    let idx = -1;
+    console.log("splitting into " + horiz_splits + " by" + vertical_splits);
+    for (let i = 0; i < window.subplots.length; i += 1) {
+      if (window.subplots[i].selected) {
+        let subplot = window.subplots[i];
+        let x_bounds = [subplot.left, subplot.left + subplot.width];
+        let y_bounds = [subplot.top, subplot.top + subplot.height];
 
+        let new_width = (x_bounds[1] - x_bounds[0]) / horiz_splits;
+        let new_height = (y_bounds[1] - y_bounds[0]) / vertical_splits;
+
+        for (let kx = 0; kx < horiz_splits; kx += 1) {
+          for (let ky = 0; ky < vertical_splits; ky += 1) {
+            let new_subplot = {
+              color: '#A0A0A0',
+              width: new_width * 0.9,
+              height: new_height * 0.9,
+              top: y_bounds[0] + new_height*ky,
+              left: x_bounds[0] + new_width*kx,
+              letter: current_letter,
+              selected: false
+            };
+            window.subplots.push(new_subplot);            
+            current_letter = String.fromCharCode(current_letter.charCodeAt(0) + 1);
+          }
+        }
+
+        idx = i;
+        break;
+      }
+    }    
+
+    // remove the old subplot
+    if (idx >= 0) {
+      window.subplots.splice(idx, 1);
+    }
+
+    draw();
   }
 
   function update() {
@@ -349,16 +389,21 @@ define([
   var add_cell = function() {
     window.subplots = [];
 
-    Jupyter.notebook.insert_cell_above('code').set_text(`# Select your plot below`);
-    Jupyter.notebook.select_prev();
+    var curr_cell = Jupyter.notebook.get_selected_cell();
+    var curr_text = curr_cell.get_text();
 
-    // Jupyter.notebook.cells_to_markdown() // convert to markdown, otherwise the cell won't execute
-    // Jupyter.notebook.execute_cell_and_select_below();
+    if (curr_text.includes("# subplots_data:")) {
+      let curr_text_lines = curr_text.split("\n");
+      window.subplots = JSON.parse(curr_text_lines[curr_text_lines.length - 1].substring(2));
+    } else {
+      curr_cell.set_text(`# Select your plot below`);
+    }
+
+    Jupyter.notebook.select();
     Jupyter.notebook.execute_cell();
 
-
     // # get reference to the stuff 
-    Jupyter.notebook.select();
+    // Jupyter.notebook.select();
     var output_subarea = $("#notebook-container")
       .children('.selected')
       .children('.output_wrapper')
@@ -385,25 +430,35 @@ define([
     save_button.innerHTML = "Save";
     save_button.addEventListener("click", save, false);
 
-    let load_button = document.createElement("button");
-    load_button.innerHTML = "Load";
-    load_button.addEventListener("click", load, false);
-
     var input_field = document.createElement("INPUT");
     input_field.setAttribute("type", "text");
     input_field.setAttribute("id", "subplots_update");
 
     let update_button = document.createElement("button");
-    update_button.innerHTML = "Update";
+    update_button.innerHTML = "Update label";
     update_button.addEventListener("click", update, false);
+
+    var vertical_splits = document.createElement("INPUT");
+    vertical_splits.setAttribute("type", "text");
+    vertical_splits.setAttribute("id", "vertical_splits");    
+
+    var horiz_splits = document.createElement("INPUT");
+    horiz_splits.setAttribute("type", "text");
+    horiz_splits.setAttribute("id", "horiz_splits");        
+
+    let split_button = document.createElement("button");
+    split_button.innerHTML = "Split selected subplot";
+    split_button.addEventListener("click", split_subplot, false);
 
     let div = document.createElement("div")
     div.appendChild(generate_button);
     div.appendChild(clear_button);
     div.appendChild(save_button);
-    div.appendChild(load_button);
     div.appendChild(input_field);
-    div.appendChild(update_button)
+    div.appendChild(update_button);
+    div.appendChild(vertical_splits);
+    div.appendChild(horiz_splits);
+    div.appendChild(split_button);
     div.appendChild(x)
 
     output_subarea[0].appendChild(div);
@@ -415,6 +470,8 @@ define([
 
     elem.addEventListener('mousedown', mousedown_callback, false);
     elem.addEventListener('mouseup', mouseup_callback, false);
+
+    draw();
   };
 
   // Button to add default cell
