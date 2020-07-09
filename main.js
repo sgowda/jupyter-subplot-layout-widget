@@ -157,6 +157,34 @@ define([
     }
   }
 
+  function unselect(subplot) {
+    subplot.color = unselected_color;
+    subplot.selected = false;
+
+    $("#edit_selected_subplot").hide();
+    // $("#split_button").hide();
+    // $("#horiz_splits").hide();
+    // $("#vertical_splits").hide();
+    // $("#update_button").hide();
+    // $("#subplots_update").hide();    
+    // $("#vertical_split_label").hide();
+    // $("#horiz_split_label").hide();
+  }
+
+  function select(subplot) {
+    subplot.color = selected_color;
+    subplot.selected = !subplot.selected; // toggle selection
+
+    $("#edit_selected_subplot").show();
+    // $("#split_button").show();
+    // $("#horiz_splits").show();
+    // $("#vertical_splits").show();
+    // $("#update_button").show();
+    // $("#subplots_update").show();  
+    // $("#vertical_split_label").show();
+    // $("#horiz_split_label").show();      
+  }
+
   function mouseup_callback(event) {
     let elem = document.getElementById('canv2');
     let rect = elem.getBoundingClientRect();
@@ -176,23 +204,11 @@ define([
       if (width < 15 && height < 15) {
         // clear selection,i.e. you can't make a tiny subplot
         for (let i = 0; i < window.subplots.length; i += 1) {
-          let subplot = window.subplots[i];
-          subplot.color = unselected_color;
-          subplot.selected = false;
+          unselect(window.subplots[i]);
         }
       } else {
         let subplot = create_new_subplot(Math.min(start_x, end_x), Math.min(start_y, end_y),
           width, height);
-
-        // var subplot = {
-        //   color: unselected_color,
-        //   width: width,
-        //   height: height,
-        //   top: Math.min(start_y, end_y),    // top-left corner is the origin, annoyingly
-        //   left: Math.min(start_x, end_x),
-        //   letter: current_letter,
-        //   selected: false
-        // };
         window.subplots.push(subplot);
 
         // increment letter for next plot
@@ -204,9 +220,7 @@ define([
 
       var subplot = window.subplots[clicked_subplot];
       if (displ_x < 5 && displ_y < 5) {
-        // treat this as a "select" action
-        subplot.color = selected_color;
-        subplot.selected = !subplot.selected; // toggle selection
+        select(subplot);
       } else {
         // move action
         subplot.top += displ_y;
@@ -306,6 +320,9 @@ define([
       context.font = "10px Arial";
       context.fillText(subplot.annotation, subplot.left + subplot.width/2, subplot.top + subplot.height/2);
     }
+
+    // 
+    save();
   }
 
   function generate_code() {
@@ -453,9 +470,8 @@ define([
     clear_button.innerHTML = "Clear";
     clear_button.addEventListener("click", clear, false);
 
-    let save_button = document.createElement("button");
-    save_button.innerHTML = "Save";
-    save_button.addEventListener("click", save, false);
+    let div_selected = document.createElement("div");
+    div_selected.setAttribute("id", "edit_selected_subplot");
 
     var input_field = document.createElement("INPUT");
     input_field.setAttribute("type", "text");
@@ -463,32 +479,56 @@ define([
 
     let update_button = document.createElement("button");
     update_button.innerHTML = "Update label";
+    update_button.setAttribute("id", "update_button");
     update_button.addEventListener("click", update, false);
 
     var vertical_splits = document.createElement("INPUT");
     vertical_splits.setAttribute("type", "text");
     vertical_splits.setAttribute("id", "vertical_splits");    
 
+    var vertical_split_label = document.createElement("label");
+    vertical_split_label.innerHTML = "# of row splits";
+
     var horiz_splits = document.createElement("INPUT");
     horiz_splits.setAttribute("type", "text");
     horiz_splits.setAttribute("id", "horiz_splits");        
 
+    var horiz_split_label = document.createElement("label");
+    horiz_split_label.innerHTML = "# of column splits";    
+
     let split_button = document.createElement("button");
     split_button.innerHTML = "Split selected subplot";
+    split_button.setAttribute("id", "split_button");
     split_button.addEventListener("click", split_subplot, false);
 
     let div = document.createElement("div")
     div.appendChild(generate_button);
     div.appendChild(clear_button);
-    div.appendChild(save_button);
-    div.appendChild(input_field);
-    div.appendChild(update_button);
-    div.appendChild(vertical_splits);
-    div.appendChild(horiz_splits);
-    div.appendChild(split_button);
-    div.appendChild(x)
+    div.appendChild(document.createElement("br"));
+    // div.appendChild(save_button);
+    div_selected.appendChild(input_field);
+    div_selected.appendChild(update_button);
+    div_selected.appendChild(document.createElement("br"));
+    div_selected.appendChild(vertical_split_label);
+    div_selected.appendChild(vertical_splits);
+    div_selected.appendChild(horiz_split_label);
+    div_selected.appendChild(horiz_splits);
+    div_selected.appendChild(split_button);
+    div.appendChild(div_selected);
+    div.appendChild(x);
 
     output_subarea[0].appendChild(div);
+
+    div.setAttribute("style", "margin-left:150px;");
+
+    // start elements as hidden if they are related to selecting a subplot
+    $("#edit_selected_subplot").hide();
+    // $("#horiz_splits").hide();
+    // $("#vertical_splits").hide();
+    // $("#update_button").hide();
+    // $("#subplots_update").hide();    
+    // $("#vertical_split_label").hide();
+    // $("#horiz_split_label").hide();
 
     var elem = document.getElementById('canv2');
     console.log(elem)
@@ -502,7 +542,6 @@ define([
     $("#subplots_update").focus(input_field_focus).blur(input_field_blur);
     $("#vertical_splits").focus(input_field_focus).blur(input_field_blur);
     $("#horiz_splits").focus(input_field_focus).blur(input_field_blur);
-
 
     draw();
   };
