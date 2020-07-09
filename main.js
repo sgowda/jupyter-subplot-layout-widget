@@ -162,13 +162,6 @@ define([
     subplot.selected = false;
 
     $("#edit_selected_subplot").hide();
-    // $("#split_button").hide();
-    // $("#horiz_splits").hide();
-    // $("#vertical_splits").hide();
-    // $("#update_button").hide();
-    // $("#subplots_update").hide();    
-    // $("#vertical_split_label").hide();
-    // $("#horiz_split_label").hide();
   }
 
   function select(subplot) {
@@ -176,13 +169,6 @@ define([
     subplot.selected = !subplot.selected; // toggle selection
 
     $("#edit_selected_subplot").show();
-    // $("#split_button").show();
-    // $("#horiz_splits").show();
-    // $("#vertical_splits").show();
-    // $("#update_button").show();
-    // $("#subplots_update").show();  
-    // $("#vertical_split_label").show();
-    // $("#horiz_split_label").show();      
   }
 
   function mouseup_callback(event) {
@@ -523,12 +509,6 @@ define([
 
     // start elements as hidden if they are related to selecting a subplot
     $("#edit_selected_subplot").hide();
-    // $("#horiz_splits").hide();
-    // $("#vertical_splits").hide();
-    // $("#update_button").hide();
-    // $("#subplots_update").hide();    
-    // $("#vertical_split_label").hide();
-    // $("#horiz_split_label").hide();
 
     var elem = document.getElementById('canv2');
     console.log(elem)
