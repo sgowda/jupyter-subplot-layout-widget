@@ -165,6 +165,7 @@ define([
   }
 
   function select(subplot) {
+    console.log("Selecting subplot ", subplot.letter);
     subplot.color = selected_color;
     subplot.selected = !subplot.selected; // toggle selection
 
@@ -275,6 +276,7 @@ define([
 
     clicked_subplot = -1;
     clicked_corner = [-1, -1];
+    clicked_edge = "none";
     state = "none"
 
     draw();
@@ -292,9 +294,8 @@ define([
       var subplot = window.subplots[index];
 
       // draw object
-      context.rect(subplot.left, subplot.top, subplot.width, subplot.height);
       context.strokeStyle = subplot.color;
-      context.stroke();
+      context.strokeRect(subplot.left, subplot.top, subplot.width, subplot.height);
 
       // context.fillStyle = subplot.color;
       // context.fillRect(subplot.left, subplot.top, subplot.width, subplot.height);
