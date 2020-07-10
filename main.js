@@ -477,7 +477,8 @@ define([
   });
 
   function update_figure_canvas() {
-    figure_state.canvas_width = $("#canvas_width_input").val();
+    figure_state.canvas_width = parseInt($("#canvas_width_input").val());
+    figure_state.canvas_height = parseInt($("#canvas_height_input").val());
     console.log("updating figure state: ", figure_state);
     draw();
   }
@@ -501,15 +502,32 @@ define([
     }
   }
 
-  function make_input_and_label(id, parent_id, input_attrs) {
+  function id_to_jquery(parent_id) {
     if (!parent_id.startsWith("#")) {
-      parent_id = "#" + parent_id;
+      return "#" + parent_id;
+    } else {
+      return parent_id;
     }
-    let label = $("<label>").text(id).attr({'id': id+'_label'}).appendTo(parent_id);
+  }
 
-    input_attrs.id = id+'_input'
+  function make_input_and_label(label, id, parent_id, input_attrs) {
+    parent_id = id_to_jquery(parent_id);
+    let label_obj = $("<label>").text(label).appendTo(parent_id);
+
+    input_attrs.id = id;
     let input = $("<input>").attr(input_attrs).appendTo(parent_id);
-    return {'label': label, 'input': input};
+    return {'label': label_obj, 'input': input};
+  }
+
+  function make_selector_and_label(label, id, parent_id, input_options) {
+    parent_id = id_to_jquery(parent_id);
+    let label_obj = $("<label>").text(label).appendTo(parent_id);
+
+    let input = $("<select>").attr({'id': id}).appendTo(parent_id);
+    $(input_options).each(function() {
+      input.append($("<option>").attr('value', this.val).text(this.text));
+    })
+    return {'label': label_obj, 'input': input};
   }
 
   var add_cell = function() {
@@ -561,20 +579,19 @@ define([
     div_fig.appendChild(document.createElement("br"));
     $("#div_fig").append(letter_font_size);
 
-    let width_selector = $("<select>").attr({'id': "canvas_width_input"}).appendTo("#div_fig");
+
     let width_options = [{val: 8, text: 'MPL default (8")'}, {val: 13.33, text: 'powerpoint (13.3"'}, 
       {val: 3.5, text: 'IEEE single column (3.5")'}, {val: 7.16, text: 'IEEE double column (7.16")'}];
-    $(width_options).each(function() {
-      width_selector.append($("<option>").attr('value', this.val).text(this.text));
-    })
+    make_selector_and_label("Canvas width: ", "canvas_width_input", "div_fig", width_options);
+
+    make_input_and_label("Canvas height: ", "canvas_height_input", "div_fig", {"size": 5});
+    $("#canvas_height_input").val(figure_state.canvas_height);
 
     let canvas_update_btn = $("<button>")
       .attr({"id": "canvas_update_btn"}).html("Update canvas")
       .appendTo("#div_fig");
     canvas_update_btn.click(update_figure_canvas);
 
-    
-    // $("#div_fig").append(width_selector);
 
     // HTML elements once you select subplot(s)
     // Labels
@@ -582,54 +599,18 @@ define([
     div_selected.setAttribute("id", "edit_selected_subplot");
     div.appendChild(div_selected);    
 
-    let axis_letter = make_input_and_label("subplot_letter", "edit_selected_subplot", {"size": "5"});
-    axis_letter.label.text("Axis letter");
+    let axis_letter = make_input_and_label("Axis letter", "subplot_letter_input", "edit_selected_subplot", {"size": "5"});
 
     $("<br>").appendTo("#edit_selected_subplot");
 
     // Splitting
-    let v_splits = make_input_and_label("vertical_splits", "edit_selected_subplot", {"size": "5"});
-    v_splits.label.text("No. of row splits");
-
-    let h_splits = make_input_and_label("horiz_splits", "edit_selected_subplot", {"size": "5"});
-    h_splits.label.text("No. of col. splits");
-
-    // var vertical_splits = document.createElement("INPUT");
-    // vertical_splits.setAttribute("type", "text");
-    // vertical_splits.setAttribute("id", "vertical_splits");    
-    // vertical_splits.setAttribute("size", "5");
-
-    // var vertical_split_label = document.createElement("label");
-    // vertical_split_label.innerHTML = "# of row splits";
-
-    // var horiz_splits = document.createElement("INPUT");
-    // horiz_splits.setAttribute("type", "text");
-    // horiz_splits.setAttribute("id", "horiz_splits");      
-    // horiz_splits.setAttribute("size", "5");
-
-    // var horiz_split_label = document.createElement("label");
-    // horiz_split_label.innerHTML = "# of column splits";    
+    let v_splits = make_input_and_label("No. of row splits", "vertical_splits_input", "edit_selected_subplot", {"size": "5"});
+    let h_splits = make_input_and_label("No. of col. splits", "horiz_splits_input", "edit_selected_subplot", {"size": "5"});
 
     $("<button>").html("Split selected subplot").click(split_subplot).appendTo("#edit_selected_subplot");
     $("<br>").appendTo("#edit_selected_subplot");
 
-    // let split_button = document.createElement("button");
-    // split_button.innerHTML = "Split selected subplot";
-    // split_button.setAttribute("id", "split_button");
-    // split_button.addEventListener("click", split_subplot, false);
-
-    // div_selected.appendChild(subplot_letter_input);
-    // div_selected.appendChild(update_button);
-    // div_selected.appendChild(document.createElement("br"));
-
-    // div_selected.appendChild(vertical_split_label);
-    // div_selected.appendChild(vertical_splits);
-    // div_selected.appendChild(horiz_split_label);
-    // div_selected.appendChild(horiz_splits);
-    // div_selected.appendChild(split_button);
-    // div_selected.appendChild(document.createElement("br"));
-
-    // alignment options and buttons
+    // Alignment
     let alignment_selector = $("<select>").attr({'id': "align_point"}).appendTo("#edit_selected_subplot");
     let alignment_options = ["left", "right", "top", "bottom", "horizontal center", "vertical center"];
     $(alignment_options).each(function() {
@@ -677,6 +658,7 @@ define([
     $("#subplot_letter_input").focus(input_field_focus).blur(input_field_blur);
     $("#vertical_splits_input").focus(input_field_focus).blur(input_field_blur);
     $("#horiz_splits_input").focus(input_field_focus).blur(input_field_blur);
+    $("#canvas_height_input").focus(input_field_focus).blur(input_field_blur);
 
     $("#subplot_letter_input").on('change input', update_subplot_letter);
 
