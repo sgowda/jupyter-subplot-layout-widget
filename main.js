@@ -188,10 +188,12 @@ define([
           console.log("Unrecognized align edge: ", align_edge);
         }
 
+        // reset state
         idx_to_align = -1;
         idx_align_ref = -1;
         subplot_to_align.selected = false;
         ref_subplot.selected = false;
+        $("#align_select_second_label").hide();
       } else if (corner_was_clicked || edge_was_clicked) {
         state = "resize";
       } else {
@@ -200,6 +202,8 @@ define([
     } else {
       state = "new";
     }
+
+    draw();
   }
 
   function unselect(subplot) {
@@ -215,7 +219,7 @@ define([
     subplot.selected = !subplot.selected; // toggle selection
 
     $("#edit_selected_subplot").show();
-    $("#subplot_letter").val(subplot.letter);
+    $("#subplot_letter_input").val(subplot.letter);
   }
 
   function mouseup_callback(event) {
@@ -420,8 +424,8 @@ define([
   }
 
   function split_subplot() {
-    let horiz_splits = $("#horiz_splits").val();
-    let vertical_splits = $("#vertical_splits").val();
+    let horiz_splits = $("#horiz_splits_input").val();
+    let vertical_splits = $("#vertical_splits_input").val();
     let idx = -1;
     console.log("splitting into " + horiz_splits + " by" + vertical_splits);
     for (let i = 0; i < figure_state.subplots.length; i += 1) {
@@ -455,8 +459,8 @@ define([
     draw();
   }
 
-  function update() {
-    let new_letter = $("#subplot_letter").val();
+  function update_subplot_letter() {
+    let new_letter = $("#subplot_letter_input").val();
     for (let i = 0; i < figure_state.subplots.length; i += 1) {
       if (figure_state.subplots[i].selected) {
         figure_state.subplots[i].letter = new_letter;
@@ -492,7 +496,20 @@ define([
       idx_to_align = selected_idx;
       state = "align";
       align_edge = $("#align_point").val();
+
+      $("#align_select_second_label").show();
     }
+  }
+
+  function make_input_and_label(id, parent_id, input_attrs) {
+    if (!parent_id.startsWith("#")) {
+      parent_id = "#" + parent_id;
+    }
+    let label = $("<label>").text(id).attr({'id': id+'_label'}).appendTo(parent_id);
+
+    input_attrs.id = id+'_input'
+    let input = $("<input>").attr(input_attrs).appendTo(parent_id);
+    return {'label': label, 'input': input};
   }
 
   var add_cell = function() {
@@ -537,7 +554,7 @@ define([
     clear_button.addEventListener("click", clear, false);
 
     let letter_font_size = $("<label>").text("Letter font size: ");
-    letter_font_size.append($("<input>").attr({'id': 'letter_font_size', 'value':16}));
+    letter_font_size.append($("<input>").attr({'id': 'letter_font_size', 'value':16, 'size': 5}));
 
     div_fig.appendChild(generate_button);
     div_fig.appendChild(clear_button);
@@ -545,7 +562,8 @@ define([
     $("#div_fig").append(letter_font_size);
 
     let width_selector = $("<select>").attr({'id': "canvas_width_input"}).appendTo("#div_fig");
-    let width_options = [{val: 13.33, text: "powerpoint"}, {val: 3.5, text: "IEEE single column"}, {val: 7.16, text: "IEEE double column"}]
+    let width_options = [{val: 8, text: 'MPL default (8")'}, {val: 13.33, text: 'powerpoint (13.3"'}, 
+      {val: 3.5, text: 'IEEE single column (3.5")'}, {val: 7.16, text: 'IEEE double column (7.16")'}];
     $(width_options).each(function() {
       width_selector.append($("<option>").attr('value', this.val).text(this.text));
     })
@@ -559,47 +577,57 @@ define([
     // $("#div_fig").append(width_selector);
 
     // HTML elements once you select subplot(s)
+    // Labels
     let div_selected = document.createElement("div");
     div_selected.setAttribute("id", "edit_selected_subplot");
     div.appendChild(div_selected);    
 
-    var input_field = document.createElement("INPUT");
-    input_field.setAttribute("type", "text");
-    input_field.setAttribute("id", "subplot_letter");
+    let axis_letter = make_input_and_label("subplot_letter", "edit_selected_subplot", {"size": "5"});
+    axis_letter.label.text("Axis letter");
 
-    let update_button = document.createElement("button");
-    update_button.innerHTML = "Update label";
-    update_button.setAttribute("id", "update_button");
-    update_button.addEventListener("click", update, false);
+    $("<br>").appendTo("#edit_selected_subplot");
 
-    var vertical_splits = document.createElement("INPUT");
-    vertical_splits.setAttribute("type", "text");
-    vertical_splits.setAttribute("id", "vertical_splits");    
+    // Splitting
+    let v_splits = make_input_and_label("vertical_splits", "edit_selected_subplot", {"size": "5"});
+    v_splits.label.text("No. of row splits");
 
-    var vertical_split_label = document.createElement("label");
-    vertical_split_label.innerHTML = "# of row splits";
+    let h_splits = make_input_and_label("horiz_splits", "edit_selected_subplot", {"size": "5"});
+    h_splits.label.text("No. of col. splits");
 
-    var horiz_splits = document.createElement("INPUT");
-    horiz_splits.setAttribute("type", "text");
-    horiz_splits.setAttribute("id", "horiz_splits");        
+    // var vertical_splits = document.createElement("INPUT");
+    // vertical_splits.setAttribute("type", "text");
+    // vertical_splits.setAttribute("id", "vertical_splits");    
+    // vertical_splits.setAttribute("size", "5");
 
-    var horiz_split_label = document.createElement("label");
-    horiz_split_label.innerHTML = "# of column splits";    
+    // var vertical_split_label = document.createElement("label");
+    // vertical_split_label.innerHTML = "# of row splits";
 
-    let split_button = document.createElement("button");
-    split_button.innerHTML = "Split selected subplot";
-    split_button.setAttribute("id", "split_button");
-    split_button.addEventListener("click", split_subplot, false);
+    // var horiz_splits = document.createElement("INPUT");
+    // horiz_splits.setAttribute("type", "text");
+    // horiz_splits.setAttribute("id", "horiz_splits");      
+    // horiz_splits.setAttribute("size", "5");
 
-    div_selected.appendChild(input_field);
-    div_selected.appendChild(update_button);
-    div_selected.appendChild(document.createElement("br"));
-    div_selected.appendChild(vertical_split_label);
-    div_selected.appendChild(vertical_splits);
-    div_selected.appendChild(horiz_split_label);
-    div_selected.appendChild(horiz_splits);
-    div_selected.appendChild(split_button);
-    div_selected.appendChild(document.createElement("br"));
+    // var horiz_split_label = document.createElement("label");
+    // horiz_split_label.innerHTML = "# of column splits";    
+
+    $("<button>").html("Split selected subplot").click(split_subplot).appendTo("#edit_selected_subplot");
+    $("<br>").appendTo("#edit_selected_subplot");
+
+    // let split_button = document.createElement("button");
+    // split_button.innerHTML = "Split selected subplot";
+    // split_button.setAttribute("id", "split_button");
+    // split_button.addEventListener("click", split_subplot, false);
+
+    // div_selected.appendChild(subplot_letter_input);
+    // div_selected.appendChild(update_button);
+    // div_selected.appendChild(document.createElement("br"));
+
+    // div_selected.appendChild(vertical_split_label);
+    // div_selected.appendChild(vertical_splits);
+    // div_selected.appendChild(horiz_split_label);
+    // div_selected.appendChild(horiz_splits);
+    // div_selected.appendChild(split_button);
+    // div_selected.appendChild(document.createElement("br"));
 
     // alignment options and buttons
     let alignment_selector = $("<select>").attr({'id': "align_point"}).appendTo("#edit_selected_subplot");
@@ -612,6 +640,12 @@ define([
       .attr({"id": "align_left"}).html("Align")
       .appendTo("#edit_selected_subplot");
     align_btn_left.click(align_callback);
+
+    let align_select_second_label = $("<label>").attr({"id": "align_select_second_label"}).text("Select reference subplot for alignment")
+      .appendTo("#edit_selected_subplot");
+    align_select_second_label.hide();
+
+
 
     // create canvas
     let canvas_width_px = figure_state.canvas_width * dpi;
@@ -640,9 +674,11 @@ define([
     elem.addEventListener('mouseup', mouseup_callback, false);
 
     // input field handlers
-    $("#subplot_letter").focus(input_field_focus).blur(input_field_blur);
-    $("#vertical_splits").focus(input_field_focus).blur(input_field_blur);
-    $("#horiz_splits").focus(input_field_focus).blur(input_field_blur);
+    $("#subplot_letter_input").focus(input_field_focus).blur(input_field_blur);
+    $("#vertical_splits_input").focus(input_field_focus).blur(input_field_blur);
+    $("#horiz_splits_input").focus(input_field_focus).blur(input_field_blur);
+
+    $("#subplot_letter_input").on('change input', update_subplot_letter);
 
     draw();
   };
