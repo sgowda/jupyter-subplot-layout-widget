@@ -424,8 +424,8 @@ define([
   }
 
   function split_subplot() {
-    let horiz_splits = $("#horiz_splits_input").val();
-    let vertical_splits = $("#vertical_splits_input").val();
+    let horiz_splits = parseInt($("#horiz_splits_input").val());
+    let vertical_splits = parseInt($("#vertical_splits_input").val());
     let idx = -1;
     console.log("splitting into " + horiz_splits + " by" + vertical_splits);
     for (let i = 0; i < figure_state.subplots.length; i += 1) {
@@ -434,13 +434,20 @@ define([
         let x_bounds = [subplot.left, subplot.left + subplot.width];
         let y_bounds = [subplot.top, subplot.top + subplot.height];
 
-        let new_width = (x_bounds[1] - x_bounds[0]) / horiz_splits;
-        let new_height = (y_bounds[1] - y_bounds[0]) / vertical_splits;
+        let n_horiz_lines = parseInt($("#vert_split_spacing").val())
+        let n_vertical_lines = parseInt($("#horiz_split_spacing").val())
+        let vertical_spacing = n_horiz_lines * 1.0/6 * dpi // 1/6 inches per line
+        let horiz_spacing = n_vertical_lines * 1.0/6 * dpi // 1/6 inches per line
+
+        let new_width = (x_bounds[1] - x_bounds[0] - horiz_spacing*(horiz_splits - 1)) / horiz_splits;
+        let new_height = (y_bounds[1] - y_bounds[0] - vertical_spacing*(vertical_splits - 1)) / vertical_splits;        
+
+        console.log(new_width, x_bounds[1] - x_bounds[0], horiz_splits)
 
         for (let kx = 0; kx < horiz_splits; kx += 1) {
           for (let ky = 0; ky < vertical_splits; ky += 1) {
-            let new_subplot = create_new_subplot(x_bounds[0] + new_width*kx, y_bounds[0] + new_height*ky,
-              new_width * 0.9, new_height * 0.9);
+            let new_subplot = create_new_subplot(x_bounds[0] + (new_width + horiz_spacing)*kx, 
+              y_bounds[0] + (new_height + horiz_spacing)*ky, new_width, new_height);
             figure_state.subplots.push(new_subplot);            
             current_letter = String.fromCharCode(current_letter.charCodeAt(0) + 1);
           }
@@ -537,8 +544,10 @@ define([
     var curr_text = curr_cell.get_text();
 
     if (curr_text.includes("# JSON data")) {
+      console.log("grabbing state from cell");
       let curr_text_lines = curr_text.split("\n");
-      figure_state.subplots = JSON.parse(curr_text_lines[curr_text_lines.length - 1].substring(2));
+      figure_state = JSON.parse(curr_text_lines[curr_text_lines.length - 1].substring(2));
+      console.log(figure_state);
     } else {
       curr_cell.set_text(`# Select your plot below`);
     }
@@ -606,6 +615,13 @@ define([
     // Splitting
     let v_splits = make_input_and_label("No. of row splits", "vertical_splits_input", "edit_selected_subplot", {"size": "5"});
     let h_splits = make_input_and_label("No. of col. splits", "horiz_splits_input", "edit_selected_subplot", {"size": "5"});
+
+    let v_spacing = make_input_and_label("Vert. spacing", "vert_split_spacing", "edit_selected_subplot", 
+      {"size": "5", "title": "Vertical spacing, in units of in text lines"});
+    v_spacing.input.val(3);
+    let h_spacing = make_input_and_label("Horiz. spacing", "horiz_split_spacing", "edit_selected_subplot", 
+      {"size": "5", "title": "Horizontal spacing, in units of in text lines"});
+    h_spacing.input.val(3);
 
     $("<button>").html("Split selected subplot").click(split_subplot).appendTo("#edit_selected_subplot");
     $("<br>").appendTo("#edit_selected_subplot");
