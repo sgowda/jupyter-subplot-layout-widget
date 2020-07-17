@@ -2,6 +2,14 @@
 
 This extension may be useful to matplotlib users who want to create intricate plot layouts, such as for scientific publications, which would normally be more convenient in a non-python graphical tool such as Inkscape or Photoshop. 
 
+## Installation
+This extension relies on the infrastructure of jupyter nbextensions: https://jupyter-contrib-nbextensions.readthedocs.io/en/latest/install.html. Therefore, you must have jupyter nbextensions installed to use this library. Follow the instructions in the above link. 
+Once jupyter nbextensions is installed, run `install.py` in this directory. This will attempt to find the "official" extensions and make a symbolic link (shortcut) to this folder. 
+
+To enable the extension, start `jupyter notebook`, click the 'Nbextensions' tab, and enable the "figure layout" extension.
+
+Open a new notebook and begin using the widget!
+
 ## Usage
 Begin with an empty notebook cell and press the icon on the far right which looks like two desktop windows. 
 ![Inject canvas](readme-images/inject-canvas.png)
