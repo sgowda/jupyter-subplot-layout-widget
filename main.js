@@ -77,12 +77,10 @@ define([
   var unselected_color = "#A0A0A0";
   var selected_color = "#FF0000";
 
-  // global state
-  // var canvas_width = 640;
-  // var canvas_height = 480;
-  // var figure_state.subplots = []
-
   var figure_state = {canvas_width: 8, canvas_height: 6, letter_font_size: 16, subplots: []};
+  var prev_state = {};
+
+  var state_history = []; // for implementing the undo action via ctrl-Z
 
 
   var start_x = -1;
@@ -91,17 +89,20 @@ define([
   var end_y = -1;
   
 
-
+  // volatile state, to be reset on startup
   var state = "none";
   var clicked_subplot = -1;
   var clicked_corner = [-1, -1];
   var clicked_edge = "none";
+  var clicked_subplot_area = 1e9;
 
   var idx_to_align = -1;
   var idx_align_ref = -1;
   var align_edge = "left";
+  var idx_to_copy = -1;
 
   var current_letter = 'A';
+  var key_state_changed = false;
 
   function mousedown_callback(event) {
     console.log("mousedown");
@@ -117,12 +118,30 @@ define([
     start_x = rel_loc.x;
     start_y = rel_loc.y;
 
+    if (state == "copy") {
+      save_state_history();
+
+      // make object copy
+      let subplot = figure_state.subplots[idx_to_copy];
+      let new_subplot = create_new_subplot(start_x, start_y, subplot.width, subplot.height);
+      figure_state.subplots.push(new_subplot);
+
+      // reset state
+      $("#canvas_ui_command").text("");
+      idx_to_copy = -1;
+      state = "none";
+
+      // draw
+      return;
+    }
+
     var margin = 10;
     for (i = 0; i < figure_state.subplots.length; i += 1) {
       let subplot = figure_state.subplots[i];
       let x_bounds = [subplot.left, subplot.left + subplot.width];
       let y_bounds = [subplot.top, subplot.top + subplot.height];
-      if (start_x > x_bounds[0] && start_x < x_bounds[1] && start_y > y_bounds[0] && start_y < y_bounds[1]) {
+      let subplot_area = (y_bounds[1] - y_bounds[0]) * (x_bounds[1] - x_bounds[0]);
+      if (start_x > x_bounds[0] && start_x < x_bounds[1] && start_y > y_bounds[0] && start_y < y_bounds[1] && subplot_area < clicked_subplot_area) {
         clicked_subplot = i;
 
         // determine if a corner was clicked
@@ -150,8 +169,6 @@ define([
             clicked_edge = "y1";
           } 
         }
-
-        break; // TODO do overlapping subplots make sense? like inset plots?
       }
     }
 
@@ -159,6 +176,7 @@ define([
     let edge_was_clicked = clicked_edge != "none";
     if (clicked_subplot >= 0) {
       if (state == "align") {
+        save_state_history();
         idx_align_ref = clicked_subplot;
 
         let subplot_to_align = figure_state.subplots[idx_to_align];
@@ -193,7 +211,7 @@ define([
         idx_align_ref = -1;
         subplot_to_align.selected = false;
         ref_subplot.selected = false;
-        $("#align_select_second_label").hide();
+        $("#canvas_ui_command").text("");
       } else if (corner_was_clicked || edge_was_clicked) {
         state = "resize";
       } else {
@@ -207,6 +225,7 @@ define([
   }
 
   function unselect(subplot) {
+    console.log("unselect subplot " + subplot.letter);
     subplot.color = unselected_color;
     subplot.selected = false;
 
@@ -216,10 +235,16 @@ define([
   function select(subplot) {
     console.log("Selecting subplot ", subplot.letter);
     subplot.color = selected_color;
-    subplot.selected = !subplot.selected; // toggle selection
+    subplot.selected = true; // toggle selection
 
     $("#edit_selected_subplot").show();
     $("#subplot_letter_input").val(subplot.letter);
+  }
+
+  function save_state_history() {
+    let state_copy = JSON.parse(JSON.stringify(figure_state));
+    state_history.push(state_copy);
+    console.log("Saved state. Length = ", state_history.length);
   }
 
   function mouseup_callback(event) {
@@ -238,31 +263,40 @@ define([
       let width = Math.abs(start_x - end_x);
       let height = Math.abs(start_y - end_y);
 
-      if (width < 15 && height < 15) {
+      if (width < 15 || height < 15) {
         // clear selection,i.e. you can't make a tiny subplot
         for (let i = 0; i < figure_state.subplots.length; i += 1) {
           unselect(figure_state.subplots[i]);
         }
       } else {
+        save_state_history();
+
         let subplot = create_new_subplot(Math.min(start_x, end_x), Math.min(start_y, end_y),
           width, height);
         figure_state.subplots.push(subplot);
+
+        select(subplot);
 
         // increment letter for next plot
         current_letter = String.fromCharCode(current_letter.charCodeAt(0) + 1);
       }
     } else if (state == "move") {
-      displ_x = end_x - start_x;
-      displ_y = end_y - start_y;
+      displ_x = Math.abs(end_x - start_x);
+      displ_y = Math.abs(end_y - start_y);
 
       var subplot = figure_state.subplots[clicked_subplot];
       if (displ_x < 5 && displ_y < 5) {
         select(subplot);
       } else {
+        save_state_history();
+
         // move action
-        subplot.top += displ_y;
-        subplot.left += displ_x;
+        subplot.left += end_x - start_x;
+        subplot.top += end_y - start_y;
       }
+
+      // select for future actions
+      select(subplot);
     } else if (state == "resize") {
       var subplot = figure_state.subplots[clicked_subplot];
       let x_bounds = [subplot.left, subplot.left + subplot.width];
@@ -270,6 +304,8 @@ define([
 
       let corner_was_clicked = clicked_corner[0] != -1 && clicked_corner[1] != -1;
       let edge_was_clicked = clicked_edge != "none";
+
+      save_state_history();
 
       if (corner_was_clicked) {
         let corner_displ_x = x_bounds[clicked_corner[0]] - end_x;
@@ -322,6 +358,9 @@ define([
           subplot.height -= y_displ;
         }
       }
+
+      // select for future actions
+      select(subplot);
     } else if (state == "none") {
       // pass
     }
@@ -329,6 +368,7 @@ define([
     clicked_subplot = -1;
     clicked_corner = [-1, -1];
     clicked_edge = "none";
+    clicked_subplot_area = 1e9;
     state = "none"
 
     draw();
@@ -374,6 +414,8 @@ define([
     let canvas_width_px = figure_state.canvas_width * dpi;
     let canvas_height_px = figure_state.canvas_height * dpi;
 
+    str += "axes_data = [ # (name of axis, label, rectangle dim.)\n";
+
     for (i = 0; i < figure_state.subplots.length; i += 1) {
       subplot = figure_state.subplots[i];
 
@@ -382,15 +424,29 @@ define([
       let py_x0 = subplot.left / canvas_width_px;
       let py_y0 = 1 - (subplot.top / canvas_height_px) - py_height;
 
-      str += `ax${subplot.letter} = fig.add_axes([${py_x0.toFixed(2)}, ${py_y0.toFixed(2)}, ${py_width.toFixed(2)}, ${py_height.toFixed(2)}])\n`;
-      str += `fig.text(${py_x0.toFixed(2)}, ${(py_y0 + py_height).toFixed(2)}, "${subplot.letter}", fontsize=${figure_state.letter_font_size}, va='bottom', ha='right')\n`
+      let subplot_letter = subplot.letter;
+      if (subplot_letter.length == 0) {
+        subplot_letter += i;
+      }
+      str += `    ("${subplot_letter}", '${subplot.letter}', [${py_x0.toFixed(2)}, ${py_y0.toFixed(2)}, ${py_width.toFixed(2)}, ${py_height.toFixed(2)}]),\n`;
+
+      // str += `ax${subplot_letter} = fig.add_axes([${py_x0.toFixed(2)}, ${py_y0.toFixed(2)}, ${py_width.toFixed(2)}, ${py_height.toFixed(2)}])\n`;
+      // str += `fig.text(${py_x0.toFixed(2)}, ${(py_y0 + py_height).toFixed(2)}, "${subplot.letter}", fontsize=${figure_state.letter_font_size}, va='bottom', ha='right')\n`
     }
+    str += "]\n";
+    str += `axes = []
+for ax_idx, ltr, rect in axes_data:
+    ax = fig.add_axes(rect)
+    axes.append(ax)
+    fig.text(rect[0], rect[1] + rect[3], ltr, fontsize=${figure_state.letter_font_size}, va='bottom', ha='right')
+`
 
     // inject new cell into the notebook
     Jupyter.notebook.insert_cell_below('code').set_text(str);
   }
 
   function clear() {
+    save_state_history();
     figure_state.subplots = [];
     draw();
   }
@@ -427,7 +483,16 @@ define([
     let horiz_splits = parseInt($("#horiz_splits_input").val());
     let vertical_splits = parseInt($("#vertical_splits_input").val());
     let idx = -1;
-    console.log("splitting into " + horiz_splits + " by" + vertical_splits);
+    // console.log("splitting into " + horiz_splits + " by" + vertical_splits);
+    if isNaN(horiz_splits) {
+      horiz_splits = 1;
+    }
+    if isNaN(vertical_splits) {
+      vertical_splits = 1;
+    }
+
+    save_state_history();
+
     for (let i = 0; i < figure_state.subplots.length; i += 1) {
       if (figure_state.subplots[i].selected) {
         let subplot = figure_state.subplots[i];
@@ -476,12 +541,93 @@ define([
     draw();
   }
 
+  // keydown handler
   document.addEventListener("keydown", event => {
     if (event.keyCode == 90 && event.ctrlKey) {
-      figure_state.subplots.pop();
-      draw();
+      if (state_history.length > 0) {
+        figure_state = state_history.pop();
+        console.log("ctrl + z, state_history.length: ", state_history.length);
+        draw();
+      }
     }
+
+    selected_subplots = [];
+    for (let i = 0; i < figure_state.subplots.length; i += 1) {
+      if (figure_state.subplots[i].selected) {
+        selected_subplots.push(i);
+      }
+    }
+
+    // arrow keys
+    let displ = 5;
+    if (selected_subplots.length > 0 && (event.keyCode >= 37 && event.keyCode <= 40)) {
+      if (!key_state_changed) {
+        save_state_history();
+      }
+
+      if (event.keyCode == 37) { // left arrow
+        console.log("move left");
+        for (let i = 0; i < selected_subplots.length; i += 1) {
+          let idx = selected_subplots[i];
+          figure_state.subplots[idx].left -= displ;
+        }
+        key_state_changed = true;
+      } else if (event.keyCode == 39) { // right arrow
+        console.log("move right");
+        for (let i = 0; i < selected_subplots.length; i += 1) {
+          let idx = selected_subplots[i];
+          figure_state.subplots[idx].left += displ;
+        }
+        key_state_changed = true;
+      } else if (event.keyCode == 38) { // up arrow
+        console.log("move up");
+        for (let i = 0; i < selected_subplots.length; i += 1) {
+          let idx = selected_subplots[i];
+          figure_state.subplots[idx].top -= displ;
+        }
+        key_state_changed = true;
+      } else if (event.keyCode == 40) { // down arrow
+        console.log("move down");
+        for (let i = 0; i < selected_subplots.length; i += 1) {
+          let idx = selected_subplots[i];
+          figure_state.subplots[idx].top += displ;
+        }
+        key_state_changed = true;
+      }      
+    }
+
+
+    if (event.keyCode == 67 && selected_subplots.length == 1) { // ctrl+c
+      console.log("copy")
+      idx_to_copy = selected_subplots[0];
+      $("#canvas_ui_command").text("Click where you want the copied subplot")
+      // copy will occur on the next mousedown
+      state = "copy";
+    }
+
+    if (event.keyCode == 68) { // ctrl + d=> delete
+      if (!key_state_changed) {
+        save_state_history();
+      }
+      console.log("delete")
+      figure_state.subplots = figure_state.subplots.filter(x => !x.selected);
+      key_state_changed = true;
+    }
+
+    // only redraw if something moved
+    if (selected_subplots.length > 0) {
+      console.log('redrawing');
+      draw();  
+    }
+    
   });
+
+  document.addEventListener("keyup", event => {
+    if (key_state_changed) {
+      key_state_changed = false;
+    }
+  })
+
 
   function update_figure_canvas() {
     figure_state.canvas_width = parseInt($("#canvas_width_input").val());
@@ -505,7 +651,7 @@ define([
       state = "align";
       align_edge = $("#align_point").val();
 
-      $("#align_select_second_label").show();
+      $("#canvas_ui_command").text("Select reference subplot for alignment");
     }
   }
 
@@ -548,8 +694,13 @@ define([
       let curr_text_lines = curr_text.split("\n");
       figure_state = JSON.parse(curr_text_lines[curr_text_lines.length - 1].substring(2));
       console.log(figure_state);
+
+      for (let i = 0; i < figure_state.subplots.length; i += 1) {
+        unselect(figure_state.subplots[i]);
+      }
     } else {
       curr_cell.set_text(`# Select your plot below`);
+      current_letter = 'A';
     }
 
     Jupyter.notebook.select();
@@ -572,6 +723,8 @@ define([
     div.appendChild(div_fig);
     
     // figure-level HTML elements
+    $("<label>").text("Keyboard shortcuts: Undo (ctrl+z), Copy (ctrl+c)").appendTo("#div_fig");
+    $("<br>").appendTo("#div_fig");
     var generate_button = document.createElement("BUTTON");
     generate_button.innerHTML = "Generate python cell"
     generate_button.addEventListener("click", generate_code, false);
@@ -584,65 +737,25 @@ define([
     letter_font_size.append($("<input>").attr({'id': 'letter_font_size', 'value':16, 'size': 5}));
 
     div_fig.appendChild(generate_button);
-    div_fig.appendChild(clear_button);
     div_fig.appendChild(document.createElement("br"));
+    div_fig.appendChild(clear_button);
+    
     $("#div_fig").append(letter_font_size);
 
+    make_input_and_label("Canvas width: ", "canvas_width_input", "div_fig", {"size": 5, "title": "width in inches. Common sizes:\n- matplotlib default: 8 in\n- Powerpoint: 13.33 in\n- IEEE single column: 3.5 in\n- IEEE double column: 7.16 in"});
+    $("#canvas_width_input").val(figure_state.canvas_width);
 
-    let width_options = [{val: 8, text: 'MPL default (8")'}, {val: 13.33, text: 'powerpoint (13.3"'}, 
-      {val: 3.5, text: 'IEEE single column (3.5")'}, {val: 7.16, text: 'IEEE double column (7.16")'}];
-    make_selector_and_label("Canvas width: ", "canvas_width_input", "div_fig", width_options);
-
-    make_input_and_label("Canvas height: ", "canvas_height_input", "div_fig", {"size": 5});
+    make_input_and_label("Canvas height: ", "canvas_height_input", "div_fig", {"size": 5, "title": "height in inches"});
     $("#canvas_height_input").val(figure_state.canvas_height);
 
     let canvas_update_btn = $("<button>")
       .attr({"id": "canvas_update_btn"}).html("Update canvas")
+      .appendTo("#div_fig")
+      .click(update_figure_canvas);
+
+    $("<br>").appendTo("#div_fig");
+    let canvas_ui_command = $("<label>").attr({"id": "canvas_ui_command"}).text("")
       .appendTo("#div_fig");
-    canvas_update_btn.click(update_figure_canvas);
-
-
-    // HTML elements once you select subplot(s)
-    // Labels
-    let div_selected = document.createElement("div");
-    div_selected.setAttribute("id", "edit_selected_subplot");
-    div.appendChild(div_selected);    
-
-    let axis_letter = make_input_and_label("Axis letter", "subplot_letter_input", "edit_selected_subplot", {"size": "5"});
-
-    $("<br>").appendTo("#edit_selected_subplot");
-
-    // Splitting
-    let v_splits = make_input_and_label("No. of row splits", "vertical_splits_input", "edit_selected_subplot", {"size": "5"});
-    let h_splits = make_input_and_label("No. of col. splits", "horiz_splits_input", "edit_selected_subplot", {"size": "5"});
-
-    let v_spacing = make_input_and_label("Vert. spacing", "vert_split_spacing", "edit_selected_subplot", 
-      {"size": "5", "title": "Vertical spacing, in units of in text lines"});
-    v_spacing.input.val(3);
-    let h_spacing = make_input_and_label("Horiz. spacing", "horiz_split_spacing", "edit_selected_subplot", 
-      {"size": "5", "title": "Horizontal spacing, in units of in text lines"});
-    h_spacing.input.val(3);
-
-    $("<button>").html("Split selected subplot").click(split_subplot).appendTo("#edit_selected_subplot");
-    $("<br>").appendTo("#edit_selected_subplot");
-
-    // Alignment
-    let alignment_selector = $("<select>").attr({'id': "align_point"}).appendTo("#edit_selected_subplot");
-    let alignment_options = ["left", "right", "top", "bottom", "horizontal center", "vertical center"];
-    $(alignment_options).each(function() {
-      alignment_selector.append($("<option>").attr('value', this).text(this));
-    })
-
-    let align_btn_left = $("<button>")
-      .attr({"id": "align_left"}).html("Align")
-      .appendTo("#edit_selected_subplot");
-    align_btn_left.click(align_callback);
-
-    let align_select_second_label = $("<label>").attr({"id": "align_select_second_label"}).text("Select reference subplot for alignment")
-      .appendTo("#edit_selected_subplot");
-    align_select_second_label.hide();
-
-
 
     // create canvas
     let canvas_width_px = figure_state.canvas_width * dpi;
@@ -654,6 +767,48 @@ define([
     canvas.setAttribute("width", canvas_width_px);
     canvas.setAttribute("clientWidth", canvas_width_px);
     canvas.setAttribute("height", canvas_height_px);    
+
+
+    // HTML elements once you select subplot(s)
+    // Labels
+    let div_selected = document.createElement("div");
+    div_selected.setAttribute("id", "edit_selected_subplot");
+    div.appendChild(div_selected);    
+
+    let div_selected_table = $("<table>").attr({"id": "subplot_selected_table", "style": "padding: 15px"}).appendTo("#edit_selected_subplot");
+
+    let label_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Label</td>").append("<td id=label_row style='padding-left: 10px'>");
+    let split_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Split</td>").append("<td id=split_row style='padding-left: 10px'>");
+    let align_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Align</td>").append("<td id=align_row style='padding-left: 10px'>");
+    let copy_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Copy</td>").append("<td id=copy_row style='padding-left: 10px'>Press ctrl+c</td>");
+
+    // labels
+    let axis_letter = make_input_and_label("Axis letter", "subplot_letter_input", "label_row", {"size": "5"});
+
+    // Splitting
+    let v_splits = make_input_and_label("No. of row splits", "vertical_splits_input", "split_row", {"size": "2.5"});
+    let h_splits = make_input_and_label("No. of col. splits", "horiz_splits_input", "split_row", {"size": "2.5"});
+
+    let v_spacing = make_input_and_label("Vert. spacing", "vert_split_spacing", "split_row", 
+      {"size": "2.5", "title": "Vertical spacing, in units of in text lines"});
+    v_spacing.input.val(3);
+    let h_spacing = make_input_and_label("Horiz. spacing", "horiz_split_spacing", "split_row", 
+      {"size": "2.5", "title": "Horizontal spacing, in units of in text lines"});
+    h_spacing.input.val(3);
+
+    $("<button>").html("Split").click(split_subplot).appendTo("#split_row");
+
+    // Alignment
+    let alignment_selector = $("<select>").attr({'id': "align_point"}).appendTo("#align_row");
+    let alignment_options = ["left", "right", "top", "bottom", "horizontal center", "vertical center"];
+    $(alignment_options).each(function() {
+      alignment_selector.append($("<option>").attr('value', this).text(this));
+    })
+
+    let align_btn = $("<button>")
+      .attr({"id": "align_left"}).html("Align")
+      .appendTo("#align_row");
+    align_btn.click(align_callback);
     
 
     // set HTML attributes. do this *after* you've added new elements to the doc
@@ -674,9 +829,14 @@ define([
     $("#subplot_letter_input").focus(input_field_focus).blur(input_field_blur);
     $("#vertical_splits_input").focus(input_field_focus).blur(input_field_blur);
     $("#horiz_splits_input").focus(input_field_focus).blur(input_field_blur);
+    $("#canvas_width_input").focus(input_field_focus).blur(input_field_blur);
     $("#canvas_height_input").focus(input_field_focus).blur(input_field_blur);
 
     $("#subplot_letter_input").on('change input', update_subplot_letter);
+
+    // store copy of state for undo actions later
+    let state_copy = JSON.parse(JSON.stringify(figure_state));
+    state_history.push(state_copy);
 
     draw();
   };
@@ -686,7 +846,7 @@ define([
     Jupyter.toolbar.add_buttons_group([
       Jupyter.keyboard_manager.actions.register({
         'help': 'Add figure layout generator',
-        'icon': 'fa-play-circle',
+        'icon': 'fa-window-restore',
         'handler': add_cell
       }, 'add-default-cell', 'Default cell')
     ])

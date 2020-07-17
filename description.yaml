@@ -4,7 +4,7 @@ Name: Figure layout
 Main: main.js
 Link: README.md
 Description: |
-  Graphically declare where axes should go on a figure
+  Graphically define the layout of axes on a figure
 
 Parameters:
 - none
