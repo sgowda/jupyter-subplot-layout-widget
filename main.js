@@ -484,10 +484,10 @@ for ax_idx, ltr, rect in axes_data:
     let vertical_splits = parseInt($("#vertical_splits_input").val());
     let idx = -1;
     // console.log("splitting into " + horiz_splits + " by" + vertical_splits);
-    if isNaN(horiz_splits) {
+    if (isNaN(horiz_splits)) {
       horiz_splits = 1;
     }
-    if isNaN(vertical_splits) {
+    if (isNaN(vertical_splits)) {
       vertical_splits = 1;
     }
 
