@@ -437,8 +437,8 @@ define([
     str += `axes = []
 for ax_idx, ltr, rect in axes_data:
     ax = fig.add_axes(rect)
+    ax.set_title(ltr, loc='left', fontsize=${figure_state.letter_font_size})
     axes.append(ax)
-    fig.text(rect[0], rect[1] + rect[3], ltr, fontsize=${figure_state.letter_font_size}, va='bottom', ha='right')
 `
 
     // inject new cell into the notebook
