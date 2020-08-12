@@ -87,7 +87,7 @@ define([
   var start_y = -1;
   var end_x = -1;
   var end_y = -1;
-  
+
 
   // volatile state, to be reset on startup
   var state = "none";
@@ -167,7 +167,7 @@ define([
             clicked_edge = "y0";
           } else if (Math.abs(start_y - y_bounds[1]) < margin && start_x > x_bounds[0] && start_x < x_bounds[1]) {
             clicked_edge = "y1";
-          } 
+          }
         }
       }
     }
@@ -183,7 +183,7 @@ define([
         let ref_subplot = figure_state.subplots[idx_align_ref];
 
         if (align_edge == "left") {
-          subplot_to_align.left = ref_subplot.left;  
+          subplot_to_align.left = ref_subplot.left;
         } else if (align_edge == "top") {
           subplot_to_align.top = ref_subplot.top;
         } else if (align_edge == "right") {
@@ -344,7 +344,7 @@ define([
         } else if (clicked_edge == "x1") {
           // right edge
           let x_displ = end_x - x_bounds[1];
-          subplot.width += x_displ;          
+          subplot.width += x_displ;
         } else if (clicked_edge == "y0") {
           console.log("top edge")
           // top(?) edge
@@ -383,7 +383,7 @@ define([
 
     let rect = elem.getBoundingClientRect();
 
-    let context = elem.getContext('2d');    
+    let context = elem.getContext('2d');
     context.clearRect(0, 0, elem.width, elem.height);
     context.beginPath();
 
@@ -505,15 +505,15 @@ for ax_idx, ltr, rect in axes_data:
         let horiz_spacing = n_vertical_lines * 1.0/6 * dpi // 1/6 inches per line
 
         let new_width = (x_bounds[1] - x_bounds[0] - horiz_spacing*(horiz_splits - 1)) / horiz_splits;
-        let new_height = (y_bounds[1] - y_bounds[0] - vertical_spacing*(vertical_splits - 1)) / vertical_splits;        
+        let new_height = (y_bounds[1] - y_bounds[0] - vertical_spacing*(vertical_splits - 1)) / vertical_splits;
 
         console.log(new_width, x_bounds[1] - x_bounds[0], horiz_splits)
 
         for (let kx = 0; kx < horiz_splits; kx += 1) {
           for (let ky = 0; ky < vertical_splits; ky += 1) {
-            let new_subplot = create_new_subplot(x_bounds[0] + (new_width + horiz_spacing)*kx, 
+            let new_subplot = create_new_subplot(x_bounds[0] + (new_width + horiz_spacing)*kx,
               y_bounds[0] + (new_height + horiz_spacing)*ky, new_width, new_height);
-            figure_state.subplots.push(new_subplot);            
+            figure_state.subplots.push(new_subplot);
             current_letter = String.fromCharCode(current_letter.charCodeAt(0) + 1);
           }
         }
@@ -521,7 +521,7 @@ for ax_idx, ltr, rect in axes_data:
         idx = i;
         break;
       }
-    }    
+    }
 
     // remove the old subplot
     if (idx >= 0) {
@@ -593,7 +593,7 @@ for ax_idx, ltr, rect in axes_data:
           figure_state.subplots[idx].top += displ;
         }
         key_state_changed = true;
-      }      
+      }
     }
 
 
@@ -617,9 +617,9 @@ for ax_idx, ltr, rect in axes_data:
     // only redraw if something moved
     if (selected_subplots.length > 0) {
       console.log('redrawing');
-      draw();  
+      draw();
     }
-    
+
   });
 
   document.addEventListener("keyup", event => {
@@ -706,7 +706,7 @@ for ax_idx, ltr, rect in axes_data:
     Jupyter.notebook.select();
     Jupyter.notebook.execute_cell();
 
-    // # get reference to the stuff 
+    // # get reference to the stuff
     // Jupyter.notebook.select();
     var output_subarea = $("#notebook-container")
       .children('.selected')
@@ -715,15 +715,15 @@ for ax_idx, ltr, rect in axes_data:
 
     // add to DOM
     let div = document.createElement("div");
-    output_subarea[0].appendChild(div);     
+    output_subarea[0].appendChild(div);
 
-    // sub-element divs 
+    // sub-element divs
     let div_fig = document.createElement("div");
     div_fig.setAttribute("id", "div_fig");
     div.appendChild(div_fig);
-    
+
     // figure-level HTML elements
-    $("<label>").text("Keyboard shortcuts: Undo (ctrl+z), Copy (ctrl+c)").appendTo("#div_fig");
+    $("<label>").text("Keyboard shortcuts: Undo (ctrl+z), Copy (ctrl+c). Use 'ctrl' even if you are on Mac!").appendTo("#div_fig");
     $("<br>").appendTo("#div_fig");
     var generate_button = document.createElement("BUTTON");
     generate_button.innerHTML = "Generate python cell"
@@ -739,7 +739,7 @@ for ax_idx, ltr, rect in axes_data:
     div_fig.appendChild(generate_button);
     div_fig.appendChild(document.createElement("br"));
     div_fig.appendChild(clear_button);
-    
+
     $("#div_fig").append(letter_font_size);
 
     make_input_and_label("Canvas width: ", "canvas_width_input", "div_fig", {"size": 5, "title": "width in inches. Common sizes:\n- matplotlib default: 8 in\n- Powerpoint: 13.33 in\n- IEEE single column: 3.5 in\n- IEEE double column: 7.16 in"});
@@ -766,21 +766,22 @@ for ax_idx, ltr, rect in axes_data:
     canvas.setAttribute("style", "border:1px solid #000000;"); //  margin-left:150px
     canvas.setAttribute("width", canvas_width_px);
     canvas.setAttribute("clientWidth", canvas_width_px);
-    canvas.setAttribute("height", canvas_height_px);    
+    canvas.setAttribute("height", canvas_height_px);
 
 
     // HTML elements once you select subplot(s)
     // Labels
     let div_selected = document.createElement("div");
     div_selected.setAttribute("id", "edit_selected_subplot");
-    div.appendChild(div_selected);    
+    div.appendChild(div_selected);
 
     let div_selected_table = $("<table>").attr({"id": "subplot_selected_table", "style": "padding: 15px"}).appendTo("#edit_selected_subplot");
 
     let label_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Label</td>").append("<td id=label_row style='padding-left: 10px'>");
     let split_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Split</td>").append("<td id=split_row style='padding-left: 10px'>");
     let align_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Align</td>").append("<td id=align_row style='padding-left: 10px'>");
-    let copy_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Copy</td>").append("<td id=copy_row style='padding-left: 10px'>Press ctrl+c</td>");
+    let copy_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Copy</td>").append("<td id=copy_row style='padding-left: 10px'>Press 'ctrl+c'</td>");
+    let delete_row = $("#subplot_selected_table").append("<tr>").children("tr:last").append("<td>Delete</td>").append("<td id=copy_row style='padding-left: 10px'>Press 'd'</td>");
 
     // labels
     let axis_letter = make_input_and_label("Axis letter", "subplot_letter_input", "label_row", {"size": "5"});
@@ -789,10 +790,10 @@ for ax_idx, ltr, rect in axes_data:
     let v_splits = make_input_and_label("No. of row splits", "vertical_splits_input", "split_row", {"size": "2.5"});
     let h_splits = make_input_and_label("No. of col. splits", "horiz_splits_input", "split_row", {"size": "2.5"});
 
-    let v_spacing = make_input_and_label("Vert. spacing", "vert_split_spacing", "split_row", 
+    let v_spacing = make_input_and_label("Vert. spacing", "vert_split_spacing", "split_row",
       {"size": "2.5", "title": "Vertical spacing, in units of in text lines"});
     v_spacing.input.val(3);
-    let h_spacing = make_input_and_label("Horiz. spacing", "horiz_split_spacing", "split_row", 
+    let h_spacing = make_input_and_label("Horiz. spacing", "horiz_split_spacing", "split_row",
       {"size": "2.5", "title": "Horizontal spacing, in units of in text lines"});
     h_spacing.input.val(3);
 
@@ -809,7 +810,7 @@ for ax_idx, ltr, rect in axes_data:
       .attr({"id": "align_left"}).html("Align")
       .appendTo("#align_row");
     align_btn.click(align_callback);
-    
+
 
     // set HTML attributes. do this *after* you've added new elements to the doc
     div.setAttribute("style", "margin-left:150px;");
@@ -831,6 +832,8 @@ for ax_idx, ltr, rect in axes_data:
     $("#horiz_splits_input").focus(input_field_focus).blur(input_field_blur);
     $("#canvas_width_input").focus(input_field_focus).blur(input_field_blur);
     $("#canvas_height_input").focus(input_field_focus).blur(input_field_blur);
+    $("#vert_split_spacing").focus(input_field_focus).blur(input_field_blur);
+    $("#horiz_split_spacing").focus(input_field_focus).blur(input_field_blur);
 
     $("#subplot_letter_input").on('change input', update_subplot_letter);
 
