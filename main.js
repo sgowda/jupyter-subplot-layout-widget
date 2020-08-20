@@ -408,6 +408,11 @@ define([
   }
 
   function generate_code() {
+    for (let i = 0; i < figure_state.subplots.length; i += 1) {
+      unselect(figure_state.subplots[i]);
+    }
+    draw();
+
     str = "import matplotlib.pyplot as plt\n%matplotlib notebook\n";
     str += `fig = plt.figure(figsize=(${figure_state.canvas_width}, ${figure_state.canvas_height}))\n`;
 
@@ -429,9 +434,6 @@ define([
         subplot_letter += i;
       }
       str += `    ("${subplot_letter}", '${subplot.letter}', [${py_x0.toFixed(2)}, ${py_y0.toFixed(2)}, ${py_width.toFixed(2)}, ${py_height.toFixed(2)}]),\n`;
-
-      // str += `ax${subplot_letter} = fig.add_axes([${py_x0.toFixed(2)}, ${py_y0.toFixed(2)}, ${py_width.toFixed(2)}, ${py_height.toFixed(2)}])\n`;
-      // str += `fig.text(${py_x0.toFixed(2)}, ${(py_y0 + py_height).toFixed(2)}, "${subplot.letter}", fontsize=${figure_state.letter_font_size}, va='bottom', ha='right')\n`
     }
     str += "]\n";
     str += `axes = []
@@ -683,7 +685,7 @@ for ax_idx, ltr, rect in axes_data:
     return {'label': label_obj, 'input': input};
   }
 
-  var add_cell = function() {
+  var inject_figure_widget = function() {
     figure_state.subplots = [];
 
     var curr_cell = Jupyter.notebook.get_selected_cell();
@@ -850,7 +852,7 @@ for ax_idx, ltr, rect in axes_data:
       Jupyter.keyboard_manager.actions.register({
         'help': 'Add figure layout generator',
         'icon': 'fa-window-restore',
-        'handler': add_cell
+        'handler': inject_figure_widget
       }, 'add-default-cell', 'Default cell')
     ])
   }
