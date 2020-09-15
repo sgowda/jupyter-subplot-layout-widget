@@ -23,10 +23,10 @@ if nbext_path == '':
     raise Exception("Could not find jupyter-contrib-nbextensions install path, is it installed?")
     sys.exit(1)
 
-print("Installing to %s using symbolic link (shortcut).")
+print("Installing to %s using symbolic link (shortcut)." % nbext_path)
 
 if os.name == 'nt':
-	print("You may have to run as administrator if on windows or depending on your jupyter installation" % nbext_path)
+	print("You may have to run as administrator if on windows or depending on your jupyter installation")
 
 if os.name == 'nt':
 	extension_name = os.path.abspath('.').split('\\')[-1]
