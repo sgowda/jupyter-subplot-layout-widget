@@ -230,6 +230,18 @@ define([
     subplot.selected = false;
 
     $("#edit_selected_subplot").hide();
+
+    // if no subplots are selected, enable the keyboard manager
+    let any_selected = false;
+    for (let k = 0; k < figure_state.subplots.length; k += 1) {
+      if (figure_state.subplots[k].selected) {
+        any_selected = true;
+        break;
+      }
+    }
+    if (!any_selected) {
+      Jupyter.keyboard_manager.enable();
+    }
   }
 
   function select(subplot) {
@@ -239,6 +251,8 @@ define([
 
     $("#edit_selected_subplot").show();
     $("#subplot_letter_input").val(subplot.letter);
+
+    Jupyter.keyboard_manager.disable();
   }
 
   function save_state_history() {
@@ -573,6 +587,7 @@ for ax_idx, ltr, rect in axes_data:
           let idx = selected_subplots[i];
           figure_state.subplots[idx].left -= displ;
         }
+        event.preventDefault();
         key_state_changed = true;
       } else if (event.keyCode == 39) { // right arrow
         console.log("move right");
@@ -580,6 +595,7 @@ for ax_idx, ltr, rect in axes_data:
           let idx = selected_subplots[i];
           figure_state.subplots[idx].left += displ;
         }
+        event.preventDefault();
         key_state_changed = true;
       } else if (event.keyCode == 38) { // up arrow
         console.log("move up");
@@ -587,6 +603,7 @@ for ax_idx, ltr, rect in axes_data:
           let idx = selected_subplots[i];
           figure_state.subplots[idx].top -= displ;
         }
+        event.preventDefault();
         key_state_changed = true;
       } else if (event.keyCode == 40) { // down arrow
         console.log("move down");
@@ -594,6 +611,7 @@ for ax_idx, ltr, rect in axes_data:
           let idx = selected_subplots[i];
           figure_state.subplots[idx].top += displ;
         }
+        event.preventDefault();
         key_state_changed = true;
       }
     }
