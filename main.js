@@ -851,6 +851,7 @@ for ax_idx, ltr, rect in axes_data:
     elem.addEventListener('mouseup', mouseup_callback, false);
 
     // input field handlers
+    $("#letter_font_size").focus(input_field_focus).blur(input_field_blur);
     $("#subplot_letter_input").focus(input_field_focus).blur(input_field_blur);
     $("#vertical_splits_input").focus(input_field_focus).blur(input_field_blur);
     $("#horiz_splits_input").focus(input_field_focus).blur(input_field_blur);
