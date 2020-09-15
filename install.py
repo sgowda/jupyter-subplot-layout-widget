@@ -1,20 +1,25 @@
 import sys
 try:
-    from jupyter_core.paths import jupyter_data_dir                                                                             
+    from jupyter_core.paths import jupyter_config_path
 except ImportError:
     raise ImportError("Could not import jupyter paths, is it installed?")
 
 import os, platform
 
 try:
-    jupyter_data_dir()
+    jupyter_config_path()
 except:
     raise Exception("Could not find jupyter data directory!")
     sys.exit(1)
 
-nbext_path = os.path.join(jupyter_data_dir(), 'nbextensions')
+nbext_path = ''
+for path in jupyter_config_path():
+	p = os.path.join(path, 'nbextensions')
+	if os.path.exists(p):
+		nbext_path = p
+		break
 
-if not os.path.exists(nbext_path):
+if nbext_path == '':
     raise Exception("Could not find jupyter-contrib-nbextensions install path, is it installed?")
     sys.exit(1)
 
