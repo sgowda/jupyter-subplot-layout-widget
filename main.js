@@ -686,6 +686,10 @@ for ax_idx, ltr, rect in axes_data:
   }
 
   var inject_figure_widget = function() {
+    if (document.getElementById("div_fig")) {
+      alert("You can't have more than one active figure layout widget at a time. Reload the page if you want to switch to a new layout")
+      return;
+    }
     figure_state.subplots = [];
 
     var curr_cell = Jupyter.notebook.get_selected_cell();
