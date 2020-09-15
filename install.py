@@ -25,11 +25,20 @@ if nbext_path == '':
 
 print("Installing to %s using symbolic link (shortcut).\nYou may have to run as administrator if on windows or depending on your jupyter installation" % nbext_path)
 
-extension_name = os.path.abspath('.').split('/')[-1]
+extension_name = os.path.abspath('.').split('\\')[-1]
 
 # make symlink
-link_target = os.path.join(nbext_path, extension_name)
-if os.path.exists(link_target):
+link = os.path.join(nbext_path, extension_name)
+if os.path.exists(link):
     print("Cannot create symbolic link because there's already an extension with this name!")
     sys.exit(1)
-os.symlink(os.path.abspath('.'), link_target, target_is_directory=True)
+
+if os.name == 'nt':
+    symlink_cmd = "mklink /D {link} {target}".format(
+        link=link, target=os.path.abspath('.'))
+    print("Running symlink creation command: %s" % symlink_cmd)
+    resp = os.popen(symlink_cmd)
+    print("Symlink command response:")
+    print(resp.readlines())
+else:
+    os.symlink(os.path.abspath('.'), link, target_is_directory=True)
