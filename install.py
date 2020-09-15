@@ -25,8 +25,6 @@ if nbext_path == '':
 
 print("Installing to %s using symbolic link (shortcut)." % nbext_path)
 
-if os.name == 'nt':
-	print("You may have to run as administrator if on windows or depending on your jupyter installation")
 
 if os.name == 'nt':
 	extension_name = os.path.abspath('.').split('\\')[-1]
@@ -49,3 +47,6 @@ if os.name == 'nt':
     print(resp.readlines())
 else:
     os.symlink(os.path.abspath('.'), link, target_is_directory=True)
+
+if os.name == 'nt':
+	print("You may have to run as administrator if on windows or depending on your jupyter installation")
